@@ -1,0 +1,144 @@
+package project1;
+
+import java.io.*;
+import java.net.*;
+
+public class Client {
+	private static int port;
+	private static String host;
+	private static String reply;
+	private static boolean closeFlag = false;
+	private static Socket socket;
+	 
+    
+	
+	public static void main(String[] args){
+		setParams(args);
+		initSocket();
+		sendHello(args[args.length-1]);
+		runSession();
+		try
+        {
+            socket.close();
+        }
+        catch(Exception e){// Error closing socket
+            //TODO generate error message
+        	System.exit(0);
+        }
+		String result = getFlag();
+		System.out.println(result);
+	}
+
+	
+	private static void setParams(String[] args) {
+		//Set Port
+		if(args.length < 2){//Minimum provided information is Hostname and BlazerID
+			//TODO generate error message
+			System.exit(0);
+		}else if(args.length > 2){//first input is port token
+			try{
+				port = Integer.parseInt(args[0].substring(4, args[0].length()-1));
+			}catch(NumberFormatException e){//port number is empty, or null, or not an int
+				//TODO generate error message
+				System.exit(0);
+			}
+		}else{ //use default port
+			port = 27993;	
+		}
+		
+		//Set Host
+		host = args[args.length-2];
+	}
+
+
+	private static void initSocket() {
+		try
+        {
+            InetAddress address = InetAddress.getByName(host);
+            socket = new Socket(address, port);
+        }catch(Exception e){//Error creating socket
+        	//TODO generate error message
+        	System.exit(0);
+        }
+	}
+
+
+	private static void runSession() {
+		do{
+			if(reply.contains("BYE")){
+				closeFlag = true;
+			}
+			if(reply.contains("STATUS")){
+				sendSolution();
+			}else{//Not a standardized or expected message type
+				//TODO generate error message
+				System.exit(0);
+			}
+		}while(!closeFlag);
+	}
+	private static void sendHello(String arg){ 
+		contactServer("cs334fall2018 HELLO " + arg +"\n");
+	}
+	
+	private static void sendSolution(){
+		String solution = getSolution();
+		if(solution == ""){//Error Parsing solution cascaded into string arithmetic
+			//TODO generate error message
+			System.exit(0);
+		}
+		contactServer("cs334fall2018 " + solution + "/n");
+	}
+	
+	private static void contactServer(String message){
+		try{
+			OutputStream ostream = socket.getOutputStream();
+	        OutputStreamWriter writer = new OutputStreamWriter(ostream);
+	        BufferedWriter bwriter = new BufferedWriter(writer);
+			bwriter.write(message);
+	        bwriter.flush();
+	        
+	        InputStream istream = socket.getInputStream();
+            InputStreamReader reader = new InputStreamReader(istream);
+            BufferedReader breader = new BufferedReader(reader);
+            reply = breader.readLine();
+		}catch(Exception e){//Error writing or reading to/from socket
+			//TODO generate error message
+			System.exit(0);
+		}
+	}
+
+	private static String getSolution() {
+		String temp = reply;
+		temp = temp.substring(0, temp.length() - 2);
+		String[] tokens = temp.split(" ");
+		String num1 = tokens[2];
+		String num2 = tokens[4];
+		String op = tokens[3];
+		
+		String result = "";
+		
+		try{
+			switch(op){
+			case "+": result = "" + (Integer.parseInt(num1) + Integer.parseInt(num2));
+			case "-": result = "" + (Integer.parseInt(num1) - Integer.parseInt(num2));
+			case "*": result = "" + (Integer.parseInt(num1) * Integer.parseInt(num2));
+			case "/": result = "" + (int)(Integer.parseInt(num1) / Integer.parseInt(num2));
+			}
+			return result;
+		}catch(Exception e){//Error parsing operands
+			//TODO generate error message
+			System.exit(0);
+		}
+		
+		return "";
+	}
+
+	private static String getFlag() {
+		String temp = reply;
+		temp = temp.substring(0, temp.length() - 2);
+		String[] tokens = temp.split(" ");
+		
+		String result = tokens[1];
+		return result;
+	}
+}
